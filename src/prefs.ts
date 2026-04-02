@@ -12,13 +12,12 @@ import {prefsTabs} from './preferences/index.js';
 import {logDebug} from './utils/log.js';
 import {initPrefs, uninitPrefs} from './utils/settings.js';
 
-export default class RoundedWindowCornersRebornPrefs extends ExtensionPreferences {
+export default class PadsiExtensionPrefs extends ExtensionPreferences {
     async fillPreferencesWindow(win: Adw.PreferencesWindow) {
         initPrefs(this.getSettings());
 
-        for (const page of prefsTabs) {
-            win.add(new page());
-        }
+        const page=prefsTabs[0];
+        win.add(new page());
 
         // Disconnect all signals when closing the preferences
         win.connect('close-request', () => {

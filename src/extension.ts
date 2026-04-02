@@ -24,7 +24,7 @@ import {logDebug} from './utils/log.js';
 import {getPref, initPrefs, prefs, uninitPrefs} from './utils/settings.js';
 import {WindowPicker} from './window_picker/service.js';
 
-export default class RoundedWindowCornersReborn extends Extension {
+export default class PadsiExtension extends Extension {
     // The extension works by overriding (monkey patching) the code of GNOME
     // Shell's internal methods. InjectionManager is a convenience class that
     // stores references to the original methods and allows to easily restore
@@ -139,13 +139,17 @@ export default class RoundedWindowCornersReborn extends Extension {
         // Set all props to null
         this.#windowPicker = null;
 
-        if (this.#layoutManagerStartupConnection !== null) {
-            layoutManager.disconnect(this.#layoutManagerStartupConnection);
+      if (this.#layoutManagerStartupConnection !== null) {
+            try {
+                layoutManager.disconnect(this.#layoutManagerStartupConnection);
+            } catch (e) {}
             this.#layoutManagerStartupConnection = null;
         }
 
-        for (const connection of this.#workspaceSwitchConnections ?? []) {
-            connection.object.disconnect(connection.id);
+      for (const connection of this.#workspaceSwitchConnections ?? []) {
+            try {
+                connection.object.disconnect(connection.id);
+            } catch (e) {}
         }
 
         logDebug('Disabled');

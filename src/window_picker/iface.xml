@@ -1,5 +1,5 @@
 <node>
-  <interface name="org.gnome.Shell.Extensions.RoundedWindowCorners">
+  <interface name="org.gnome.Shell.Extensions.PadsiExtension">
     <method name="pick" />
     <signal name="picked">
       <arg name="window" type="s" />

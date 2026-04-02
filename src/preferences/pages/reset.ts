@@ -47,8 +47,6 @@ export const ResetPage = GObject.registerClass(
 
         // Map prefs to their labels in the UI.
         #resetLabels: {[Key in ResetKey]?: string} = {
-            'skip-libadwaita-app': 'Skip LibAdwaita Applications',
-            'skip-libhandy-app': 'Skip LibHandy Applications',
             'focused-shadow': 'Focus Window Shadow Style',
             'unfocused-shadow': 'Unfocus Window Shadow Style',
             'keep-shadow-for-maximized-fullscreen':
@@ -57,7 +55,6 @@ export const ResetPage = GObject.registerClass(
             'debug-mode': 'Enable Log',
 
             borderRadius: 'Border Radius',
-            borderColor: 'Border Color',
             padding: 'Padding',
             keepRoundedCorners:
                 'Keep Rounded Corners when Maximized or Fullscreen',

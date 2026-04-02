@@ -7,6 +7,7 @@ import type {Bounds, RoundedCornerSettings} from '../utils/types.js';
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
+import GLib from 'gi://GLib';
 
 import {boxShadowCss} from '../utils/box_shadow.js';
 import {
@@ -17,6 +18,125 @@ import {
 import {readFile} from '../utils/file.js';
 import {logDebug} from '../utils/log.js';
 import {getPref} from '../utils/settings.js';
+
+let padsi_zones_file = "/run/padsi/zones-infos/colors.json";
+let padsi_namespaces: Record<string, [number, number, number]> = {};
+
+function load(path: string): string | null {
+    try {
+        const file = Gio.File.new_for_path(path);
+        const [, contents] = file.load_contents(null);
+        const decoder = new TextDecoder("utf-8");
+        return decoder.decode(contents);
+    } catch (e) {
+        logDebug(`JSON file ${padsi_zones_file} not yet present`);
+        return null;
+    }
+}
+
+function get_ppid(pid: number): number | null | undefined {
+    const path = `/proc/${pid}/stat`;
+    let st = load(path);
+    if (st == null) return null;
+    let parts = st.split(")");
+    if (parts.length != 2) {
+        logDebug(`Missing command in parenthesis in '${path}' contents '${st}'`);
+        return undefined;
+    }
+
+    parts = parts[1].trim().split(" ");
+    const ppid = parseInt(parts[1]);
+    if (ppid == 0) return null;
+    return ppid;
+}
+
+function get_namespaces(pid: number): string[] | undefined {
+    let res: string[] = [];
+    let lpid: number | null | undefined = pid;
+    while (lpid != null) {
+        try {
+            const mnt = GLib.file_read_link(`/proc/${lpid}/ns/mnt`);
+            const net = GLib.file_read_link(`/proc/${lpid}/ns/net`);
+            const ns = mnt + net;
+            if (!res.includes(ns)) res.push(ns);
+        } catch (e) {
+          //logDebug(`Could not readlink PID '${lpid}' namespaces: '${e}'`);
+          // we may get some permission denied errors
+        }
+        lpid = get_ppid(lpid);
+        if (lpid === undefined) return undefined;
+    }
+    logDebug(`Namespaces for PID ${pid}: ${res}`);
+    return res;
+}
+
+function remove_border(cfg: RoundedCornerSettings): RoundedCornerSettings {
+    let ncfg = { ...cfg };
+    ncfg.borderColor[3] = 0;
+    return ncfg;
+}
+/*
+ * Get the border color of a window using the namespace of the PID which "owns" the window
+ * and the padsi_namespaces variable's values.
+ *
+ * The transparency component of the returned value is taken from the settings_border_color variable
+ * which represents the current global extension's settings.
+ */
+function get_border_color(
+    win: Meta.Window,
+    cfg: RoundedCornerSettings,
+): RoundedCornerSettings {
+    let pid = win.get_pid();
+    let namespaces = get_namespaces(pid);
+
+    if (namespaces === undefined) {
+        logDebug(`Could not determine namespaces of PID ${pid}`);
+        return remove_border(cfg);
+    }
+
+    // try to find a matching color for the namespace
+    for (var i = 0; i < namespaces.length; i++) {
+        const colors = padsi_namespaces[namespaces[i]];
+        if (colors !== undefined) {
+            logDebug("Found border color for PID " + pid + ": " + colors);
+            let scfg = { ...cfg };
+            scfg.borderColor[0] = colors[0];
+            scfg.borderColor[1] = colors[1];
+            scfg.borderColor[2] = colors[2];
+            return scfg;
+        }
+    }
+
+    // reload the PADSI namespaces
+    try {
+        let data = load(padsi_zones_file);
+        if (data == null) {
+            padsi_namespaces = {};
+            return remove_border(cfg);
+        }
+        padsi_namespaces = JSON.parse(data);
+    } catch (e: any) {
+        logError(e);
+        padsi_namespaces = {};
+        return remove_border(cfg);
+    }
+
+    logDebug("Reloaded namespaces's colors");
+    // try again to find a matching color for the namespace
+    for (var i = 0; i < namespaces.length; i++) {
+        const colors = padsi_namespaces[namespaces[i]];
+        if (colors !== undefined) {
+            logDebug("Found border color for PID " + pid + ": " + colors);
+            let scfg = { ...cfg };
+            scfg.borderColor[0] = colors[0];
+            scfg.borderColor[1] = colors[1];
+            scfg.borderColor[2] = colors[2];
+            return scfg;
+        }
+    }
+
+    return remove_border(cfg);
+}
 
 // Cache mutter settings to avoid creating a new Gio.Settings object on every
 // call to windowScaleFactor (which is called per-frame during overview animations).
@@ -84,17 +204,20 @@ export function unwrapActor(actor: Meta.WindowActor): Clutter.Actor | null {
 export function getRoundedCornersCfg(win: Meta.Window): RoundedCornerSettings {
     const globalCfg = getPref('global-rounded-corner-settings');
     const customCfgList = getPref('custom-rounded-corner-settings');
-
+    let res = null;
     const wmClass = win.get_wm_class_instance();
     if (
         wmClass == null ||
         !customCfgList[wmClass] ||
         !customCfgList[wmClass].enabled
     ) {
-        return globalCfg;
+        res = globalCfg;
+    } else {
+        res = customCfgList[wmClass];
     }
 
-    return customCfgList[wmClass];
+    // adapt the returned setting from the actual window
+    return get_border_color(win, res);
 }
 
 // Weird TypeScript magic :)
@@ -110,7 +233,10 @@ type RoundedCornersEffectType = InstanceType<typeof RoundedCornersEffect>;
 export function getRoundedCornersEffect(
     actor: Meta.WindowActor,
 ): RoundedCornersEffectType | null {
-    const win = actor.metaWindow;
+  const win = actor.metaWindow;
+    if (win == null) {
+        return null;
+    }
     const name = ROUNDED_CORNERS_EFFECT;
     return win.get_client_type() === Meta.WindowClientType.X11
         ? (actor.firstChild.get_effect(name) as RoundedCornersEffectType)
@@ -284,52 +410,13 @@ export function updateShadowActorStyle(
 export function shouldEnableEffect(
     win: Meta.Window & {_appType?: AppType},
 ): boolean {
+    if (win == null) {
+        return false;
+    }
     // Skip rounded corners for the DING (Desktop Icons NG) extension.
     //
     // https://extensions.gnome.org/extension/2087/desktop-icons-ng-ding/
     if (win.gtkApplicationId === 'com.rastersoft.ding') {
-        return false;
-    }
-
-    // Skip blacklisted applications.
-    const wmClass = win.get_wm_class_instance();
-    if (wmClass == null) {
-        logDebug(`Warning: wm_class_instance of ${win}: ${win.title} is null`);
-        return false;
-    }
-    // handles blacklist / whitelist
-    const isException = getPref('blacklist').includes(wmClass);
-    const enableExceptions = getPref('whitelist');
-    if (isException !== enableExceptions) {
-        return false;
-    }
-
-    // Only apply the effect to normal windows (skip menus, tooltips, etc.)
-    if (
-        win.windowType !== Meta.WindowType.NORMAL &&
-        win.windowType !== Meta.WindowType.DIALOG &&
-        win.windowType !== Meta.WindowType.MODAL_DIALOG
-    ) {
-        return false;
-    }
-
-    // Skip libhandy/libadwaita applications according to settings.
-    const appType = win._appType ?? getAppType(win);
-    win._appType = appType; // Cache the result.
-    logDebug(`Check Type of window:${win.title} => ${appType}`);
-
-    if (
-        getPref('skip-libadwaita-app') &&
-        appType === 'LibAdwaita' &&
-        !isException
-    ) {
-        return false;
-    }
-    if (
-        getPref('skip-libhandy-app') &&
-        appType === 'LibHandy' &&
-        !isException
-    ) {
         return false;
     }
 

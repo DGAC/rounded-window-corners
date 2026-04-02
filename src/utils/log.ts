@@ -3,18 +3,18 @@
 import {getPref} from './settings.js';
 
 /**
- * Log a message with a [Rounded Window Corners] prefix, but only
+ * Log a message with a [PADSI] prefix, but only
  * when debug mode is enabled.
  */
 export function logDebug(...args: unknown[]) {
     if (getPref('debug-mode')) {
-        console.log(`[Rounded Window Corners] ${args}`);
+        console.log(`[PADSI] ${args}`);
     }
 }
 
 /**
- * Log an error with a [Rounded Window Corners] prefix.
+ * Log an error with a [PADSI] prefix.
  */
 export function logError(...args: unknown[]) {
-    console.error(`[Rounded Window Corners] ${args}`);
+    console.error(`[PADSI] ${args}`);
 }

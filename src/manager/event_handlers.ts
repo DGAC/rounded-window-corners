@@ -33,12 +33,15 @@ import {
 } from './utils.js';
 
 export function onAddEffect(actor: RoundedWindowActor) {
-    logDebug(`Adding effect to ${actor?.metaWindow.title}`);
-
-    const win = actor.metaWindow;
+  const win = actor.metaWindow;
+    if (win!=null) {
+        logDebug(`Adding effect to ${win.title}`);
+    }
 
     if (!shouldEnableEffect(win)) {
-        logDebug(`Skipping ${win.title}`);
+        if (win!=null) {
+            logDebug(`Skipping ${win.title}`);
+        }
         return;
     }
 

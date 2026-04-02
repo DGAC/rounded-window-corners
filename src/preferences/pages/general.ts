@@ -29,34 +29,24 @@ export const GeneralPage = GObject.registerClass(
         // passed into the JS module prefixed with an underscore.
         // (skipLibadwaita -> _skipLibadwaita)
         InternalChildren: [
-            'skipLibadwaita',
-            'skipLibhandy',
             'borderWidth',
-            'borderColor',
             'cornerRadius',
             'cornerSmoothing',
             'keepShadowForMaximizedFullscreen',
             'keepForMaximized',
             'keepForFullscreen',
             'paddings',
-            'tweakKitty',
-            'rightClickMenu',
             'enableDebugLogs',
         ],
     },
     class extends Adw.PreferencesPage {
-        private declare _skipLibadwaita: Adw.SwitchRow;
-        private declare _skipLibhandy: Adw.SwitchRow;
         private declare _borderWidth: Gtk.Adjustment;
-        private declare _borderColor: Gtk.ColorDialogButton;
         private declare _cornerRadius: Gtk.Adjustment;
         private declare _cornerSmoothing: Gtk.Adjustment;
         private declare _keepShadowForMaximizedFullscreen: Adw.SwitchRow;
         private declare _keepForMaximized: Adw.SwitchRow;
         private declare _keepForFullscreen: Adw.SwitchRow;
         private declare _paddings: PaddingsRowClass;
-        private declare _tweakKitty: Adw.SwitchRow;
-        private declare _rightClickMenu: Adw.SwitchRow;
         private declare _enableDebugLogs: Adw.SwitchRow;
 
         #settings = getPref('global-rounded-corner-settings');
@@ -66,41 +56,10 @@ export const GeneralPage = GObject.registerClass(
             super();
 
             bindPref(
-                'skip-libadwaita-app',
-                this._skipLibadwaita,
-                'active',
-                Gio.SettingsBindFlags.DEFAULT,
-            );
-            bindPref(
-                'skip-libhandy-app',
-                this._skipLibhandy,
-                'active',
-                Gio.SettingsBindFlags.DEFAULT,
-            );
-
-            bindPref(
                 'border-width',
                 this._borderWidth,
                 'value',
                 Gio.SettingsBindFlags.DEFAULT,
-            );
-
-            const color = new Gdk.RGBA();
-            [color.red, color.green, color.blue, color.alpha] =
-                this.#settings.borderColor;
-            this._borderColor.set_rgba(color);
-            this._borderColor.connect(
-                'notify::rgba',
-                (button: Gtk.ColorDialogButton) => {
-                    const color = button.get_rgba();
-                    this.#settings.borderColor = [
-                        color.red,
-                        color.green,
-                        color.blue,
-                        color.alpha,
-                    ];
-                    this.#updateGlobalConfig();
-                },
             );
 
             this._cornerRadius.set_value(this.#settings.borderRadius);
@@ -186,20 +145,6 @@ export const GeneralPage = GObject.registerClass(
                     this.#settings.padding.right = row.paddingEnd;
                     this.#updateGlobalConfig();
                 },
-            );
-
-            bindPref(
-                'tweak-kitty-terminal',
-                this._tweakKitty,
-                'active',
-                Gio.SettingsBindFlags.DEFAULT,
-            );
-
-            bindPref(
-                'enable-preferences-entry',
-                this._rightClickMenu,
-                'active',
-                Gio.SettingsBindFlags.DEFAULT,
             );
 
             bindPref(

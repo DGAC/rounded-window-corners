@@ -1,8 +1,8 @@
 {
-    "name": "gnome-shell-extension-rounded-corners-effect",
+    "name": "gnome-shell-extension-padsi",
     "version": "v1",
-    "description": "A GNOME extension that adds rounded corners to all windows",
-    "author": "flexagoon <code@fxgn.dev>",
+    "description": "PADSI GNOME extension",
+    "author": "flexagoon <code@fxgn.dev>, vivien Malerba <vivien.malerba@aviation-civile.gouv.fr>",
     "license": "GPL-3.0-or-later",
     "main": "src/extension.ts",
     "devDependencies": {
