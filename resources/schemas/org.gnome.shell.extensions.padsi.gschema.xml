@@ -56,8 +56,8 @@
             'bottom': &lt;uint32 1&gt;
           }&gt;,
           'keepRoundedCorners': &lt;{
-            'maximized': &lt;false&gt;,
-            'fullscreen': &lt;false&gt;
+            'maximized': &lt;true&gt;,
+            'fullscreen': &lt;true&gt;
           }&gt;,
           'borderRadius': &lt;uint32 6&gt;,
           'smoothing': &lt;0&gt;,
